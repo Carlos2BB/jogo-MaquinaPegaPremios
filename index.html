@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Arcade Park - Final Version</title>
+    <title>Arcade Park - Front View</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #000; }
         #crosshair {
@@ -77,7 +77,7 @@
     renderer.shadowMap.enabled = true;
     document.body.appendChild(renderer.domElement);
 
-    // CÉU COM GRADIENTE
+    // CÉU E AMBIENTE
     const skyGeo = new THREE.SphereGeometry(450, 32, 15);
     const skyMat = new THREE.ShaderMaterial({
         uniforms: { topColor: { value: new THREE.Color(0x00aaff) }, bottomColor: { value: new THREE.Color(0xffffff) } },
@@ -91,7 +91,6 @@
     sun.position.set(50, 100, 50);
     scene.add(sun);
 
-    // CHÃO E ÁRVORES REAIS
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000), new THREE.MeshStandardMaterial({color: 0x348C31}));
     ground.rotation.x = -Math.PI / 2;
     scene.add(ground);
@@ -114,7 +113,7 @@
         }
     }
 
-    // MÁQUINA COMPLETA
+    // MÁQUINA
     const machine = new THREE.Group();
     const mBase = new THREE.Mesh(new THREE.BoxGeometry(4, 1.8, 4), new THREE.MeshStandardMaterial({color:0xcc0000}));
     mBase.position.y = 0.9; machine.add(mBase);
@@ -149,7 +148,7 @@
     machine.position.set(0, 0, -12);
     scene.add(machine);
 
-    // PARKOUR LONGO
+    // PARKOUR
     const platforms = [];
     const movingPlats = [];
     function createP(x,y,z,w,d, m=false) {
@@ -189,7 +188,10 @@
             if(state === "WALK" && camera.position.distanceTo(machine.position) < 5) {
                 if(coinsCount > 0) {
                     state = "CLAW"; document.getElementById('game-info').style.display = 'block';
-                    camera.position.set(0, 4.8, -7.5); camera.rotation.set(-0.35, Math.PI, 0); cYaw = 0;
+                    // CÂMERA DE FRENTE (Corrigida: mais baixa e sem inclinação excessiva)
+                    camera.position.set(0, 4.0, -7.0); 
+                    camera.rotation.set(0, Math.PI, 0); 
+                    cYaw = 0;
                 }
             }
         }
