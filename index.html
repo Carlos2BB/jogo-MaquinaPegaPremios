@@ -81,7 +81,7 @@
         <h2 style="color:#00ffff; margin-top:0">MODO GARRA</h2>
         <ul style="list-style:none; padding:0">
             <li>Setas: Mover Garra</li>
-            <li>Mouse: Girar Câmera</li>
+            <li>Mouse: Olhar para Lados</li>
             <li>Espaço: Pescar</li>
             <li>ESC: Sair</li>
         </ul>
@@ -117,42 +117,12 @@
     sun.castShadow = true;
     scene.add(sun, new THREE.AmbientLight(0xffffff, 0.6));
 
-    // --- CHÃO DE GRAMA REALISTA (SHADER DE VENTO E VARIAÇÃO DE COR) ---
+    // CHÃO DE GRAMA REALISTA
     const groundGeo = new THREE.PlaneGeometry(1000, 1000, 100, 100);
     const groundMat = new THREE.ShaderMaterial({
-        uniforms: {
-            time: { value: 0 },
-            colorBase: { value: new THREE.Color(0x348C31) },
-            colorTip: { value: new THREE.Color(0x55AE4A) }
-        },
-        vertexShader: `
-            uniform float time;
-            varying vec2 vUv;
-            varying float vWind;
-            void main() {
-                vUv = uv;
-                // Simulação simples de vento baseada na posição e tempo
-                vWind = sin(position.x * 0.1 + time) * cos(position.y * 0.1 + time) * 0.5;
-                vec3 newPos = position;
-                // Move os vértices levemente para simular o balanço
-                if (position.y > 0.0) { // Aplica apenas "acima" do nível base se houver altura
-                    newPos.x += vWind * 0.2;
-                }
-                gl_Position = projectionMatrix * modelViewMatrix * vec4(newPos, 1.0);
-            }
-        `,
-        fragmentShader: `
-            uniform vec3 colorBase;
-            uniform vec3 colorTip;
-            varying vec2 vUv;
-            varying float vWind;
-            void main() {
-                // Mix de cores baseado no "vento" e UV para criar textura
-                float factor = vUv.y + vWind * 0.1;
-                vec3 finalColor = mix(colorBase, colorTip, factor);
-                gl_FragColor = vec4(finalColor, 1.0);
-            }
-        `,
+        uniforms: { time: { value: 0 }, colorBase: { value: new THREE.Color(0x348C31) }, colorTip: { value: new THREE.Color(0x55AE4A) } },
+        vertexShader: `uniform float time; varying vec2 vUv; varying float vWind; void main() { vUv = uv; vWind = sin(position.x * 0.1 + time) * cos(position.y * 0.1 + time) * 0.5; vec3 newPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(newPos, 1.0); }`,
+        fragmentShader: `uniform vec3 colorBase; uniform vec3 colorTip; varying vec2 vUv; varying float vWind; void main() { float factor = vUv.y + vWind * 0.1; gl_FragColor = vec4(mix(colorBase, colorTip, factor), 1.0); }`,
         side: THREE.DoubleSide
     });
     const ground = new THREE.Mesh(groundGeo, groundMat);
@@ -160,43 +130,34 @@
     ground.receiveShadow = true;
     scene.add(ground);
 
-    // PÁSSAROS (Sistema de partículas original)
+    // --- PÁSSAROS NATURAIS (VOO LINEAR) ---
     const birds = [];
     const birdGeo = new THREE.BufferGeometry();
-    birdGeo.setAttribute('position', new THREE.Float32BufferAttribute([-0.2,0,0, 0,0,0.3, 0.2,0,0], 3));
-    const birdMat = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide });
-    for(let i=0; i<15; i++){
+    birdGeo.setAttribute('position', new THREE.Float32BufferAttribute([-0.3,0,0, 0,0,0.4, 0.3,0,0], 3));
+    const birdMat = new THREE.MeshBasicMaterial({ color: 0x222222, side: THREE.DoubleSide });
+
+    function resetBird(bird) {
+        const side = Math.random() > 0.5 ? 1 : -1;
+        bird.position.set(200 * side, 25 + Math.random() * 20, (Math.random() - 0.5) * 200);
+        bird.userData = { 
+            velocity: new THREE.Vector3(-side * (0.2 + Math.random() * 0.3), 0, (Math.random() - 0.5) * 0.1),
+            active: true 
+        };
+    }
+
+    for(let i=0; i<8; i++){
         const bird = new THREE.Mesh(birdGeo, birdMat);
-        const angle = Math.random() * Math.PI * 2;
-        const dist = 20 + Math.random() * 50;
-        bird.userData = { angle: angle, speed: 0.01 + Math.random()*0.02, dist: dist, height: 20 + Math.random()*15 };
+        resetBird(bird);
         scene.add(bird);
         birds.push(bird);
     }
 
-    // --- ÁRVORES COM FOLHAS REALISTAS (SHADER DE BALANÇO) ---
+    // ÁRVORES COM FOLHAS REALISTAS
     const leafGeo = new THREE.DodecahedronGeometry(2);
     const leafMat = new THREE.ShaderMaterial({
-        uniforms: {
-            time: { value: 0 },
-            color: { value: new THREE.Color(0x2E7D32) }
-        },
-        vertexShader: `
-            uniform float time;
-            void main() {
-                vec3 newPos = position;
-                // Balanço orgânico das folhas
-                newPos.x += sin(time + position.y) * 0.1;
-                newPos.y += cos(time + position.x) * 0.05;
-                gl_Position = projectionMatrix * modelViewMatrix * vec4(newPos, 1.0);
-            }
-        `,
-        fragmentShader: `
-            uniform vec3 color;
-            void main() {
-                gl_FragColor = vec4(color, 1.0);
-            }
-        `
+        uniforms: { time: { value: 0 }, color: { value: new THREE.Color(0x2E7D32) } },
+        vertexShader: `uniform float time; void main() { vec3 newPos = position; newPos.x += sin(time + position.y) * 0.1; gl_Position = projectionMatrix * modelViewMatrix * vec4(newPos, 1.0); }`,
+        fragmentShader: `uniform vec3 color; void main() { gl_FragColor = vec4(color, 1.0); }`
     });
 
     for(let i=0; i<50; i++) {
@@ -211,7 +172,7 @@
         }
     }
 
-    // --- PARKOUR MELHORADO E APROXIMADO ---
+    // PARKOUR APROXIMADO
     const parkourStartPos = new THREE.Vector3(50, 1.7, -30);
     const movingPlatforms = [];
     const allPlatforms = [];
@@ -227,42 +188,25 @@
         if(moving) movingPlatforms.push({mesh: plat, startZ: z, dir: 1});
     }
 
-    // Percurso ajustado para ser mais próximo e jogável
-    createPlatform(50, 0.5, -30, 6, 6);   // Base
-    createPlatform(50, 2.5, -36, 3, 3);   // Aproximado (era -40)
-    createPlatform(55, 4.5, -36, 3, 3);   // Aproximado (era 58, -40)
-    createPlatform(60, 6.5, -36, 3, 3, true); // Móvel aproximado (era 66, -40)
-    createPlatform(60, 8.5, -42, 4, 4);   // Aproximado (era 66, -50)
-    createPlatform(55, 10.5, -48, 2, 2);  // Aproximado (era 58, -58)
-    
-    // Novos obstáculos adicionais (aproximados)
+    createPlatform(50, 0.5, -30, 6, 6);
+    createPlatform(50, 2.5, -36, 3, 3);
+    createPlatform(55, 4.5, -36, 3, 3);
+    createPlatform(60, 6.5, -36, 3, 3, true);
+    createPlatform(60, 8.5, -42, 4, 4);
+    createPlatform(55, 10.5, -48, 2, 2);
     createPlatform(49, 11.5, -48, 2, 2);
     createPlatform(43, 12.5, -42, 3, 3, true);
     createPlatform(37, 13.5, -36, 2, 2);
     createPlatform(37, 14.5, -30, 3, 3);
     createPlatform(43, 15.5, -24, 2, 2);
     createPlatform(50, 16.5, -24, 3, 3);
-    createPlatform(57, 17.5, -28, 2, 6, true);
-    createPlatform(57, 18.5, -38, 4, 4);
-    createPlatform(50, 19.5, -46, 3, 3);
-    createPlatform(50, 20.0, -55, 8, 8); // Nova base final aproximada
+    createPlatform(50, 18.0, -32, 8, 8);
     scene.add(parkourGroup);
 
     const potion = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 0.8), new THREE.MeshStandardMaterial({color: 0x00ff00, emissive: 0x00ff00}));
-    potion.position.set(50, 21.5, -55);
+    potion.position.set(50, 19.5, -32);
     scene.add(potion);
 
-    const finalCoins = [];
-    let finalCoinsCollected = false;
-    for(let i=0; i<5; i++) {
-        const c = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.05), new THREE.MeshStandardMaterial({ color: 0x00ff00, metalness: 0.9 }));
-        c.position.set(48 + i, 21, -57);
-        c.rotation.x = Math.PI/2;
-        scene.add(c);
-        finalCoins.push(c);
-    }
-
-    // MOEDAS INICIAIS
     const coins = [];
     for(let i=0; i<30; i++) {
         const c = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.015), new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.9 }));
@@ -271,32 +215,10 @@
         scene.add(c); coins.push(c);
     }
 
-    // MÃO
-    const handGroup = new THREE.Group();
-    const palm = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.08, 0.35), new THREE.MeshStandardMaterial({color: 0xffdbac}));
-    const heldCoin = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.015), new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.9 }));
-    heldCoin.position.set(0, 0.08, 0); heldCoin.visible = false;
-    handGroup.add(palm, heldCoin);
-    handGroup.position.set(0.6, -0.6, -1);
-    camera.add(handGroup);
-    scene.add(camera);
-
-    // MÁQUINA (mantida original)
+    // MÁQUINA
     const machine = new THREE.Group();
     const base = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.2, 3.2), new THREE.MeshStandardMaterial({color: 0xcc0000}));
     base.position.y = 0.6; machine.add(base);
-
-    const panel = new THREE.Mesh(new THREE.BoxGeometry(2, 0.4, 0.8), new THREE.MeshStandardMaterial({color: 0x222222}));
-    panel.position.set(0, 1.2, 1.5); machine.add(panel);
-    
-    const joystickBase = new THREE.Mesh(new THREE.SphereGeometry(0.1), new THREE.MeshStandardMaterial({color: 0x000000}));
-    joystickBase.position.set(-0.5, 1.45, 1.5); machine.add(joystickBase);
-    const joystickStick = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.5), new THREE.MeshStandardMaterial({color: 0xcccccc}));
-    joystickStick.position.set(-0.5, 1.6, 1.5); machine.add(joystickStick);
-    
-    const machineButton = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.1), new THREE.MeshStandardMaterial({color: 0xff0000}));
-    machineButton.position.set(0.5, 1.4, 1.5); machine.add(machineButton);
-
     const glass = new THREE.Mesh(new THREE.BoxGeometry(3, 3.5, 3), new THREE.MeshStandardMaterial({color: 0xffffff, transparent: true, opacity: 0.15}));
     glass.position.y = 2.8; machine.add(glass);
     
@@ -322,30 +244,29 @@
     clawSystem.position.set(0, 4.5, 0); machine.add(clawSystem);
     machine.position.set(0, 0, -10); scene.add(machine);
 
-    // LÓGICA E ESTADOS (mantidos originais)
-    let playerName = "";
+    // LÓGICA
     let coinsCount = 0, prizesLeft = 10;
     let gameState = "SETUP", isClawDescending = false;
     let startTime = 0, gameActive = false;
     let moveF = false, moveB = false, moveL = false, moveR = false;
     let velocityY = 0, canJump = true, yaw = 0, pitch = 0, clawOpen = 1;
     let luckTime = 0, isLuckActive = false;
-    let clawOrbitAngle = 0;
+    
+    // Novas vars para câmera de olhar lateral na máquina
+    let clawYaw = 0;
 
     window.startGame = () => {
-        playerName = document.getElementById('player-name').value || "Player";
         document.getElementById('setup-screen').style.display = 'none';
         gameState = "WALK";
     };
 
     window.resetCurrentMatch = () => {
         camera.position.set(0, 1.7, 0); velocityY = 0;
-        startTime = Date.now(); isLuckActive = false;
-        document.getElementById('luck-timer').style.display = 'none';
+        startTime = Date.now();
     };
 
     document.addEventListener('mousedown', () => { 
-        if(gameState === "WALK" || gameState === "CLAW") document.body.requestPointerLock(); 
+        if(gameState !== "SETUP") document.body.requestPointerLock(); 
     });
     
     document.addEventListener('mousemove', (e) => {
@@ -356,7 +277,10 @@
                 pitch = Math.max(-1.5, Math.min(1.5, pitch));
                 camera.rotation.set(pitch, yaw, 0, 'YXZ');
             } else if(gameState === "CLAW") {
-                clawOrbitAngle -= e.movementX * 0.005;
+                // Limitado para olhar apenas de um lado para o outro
+                clawYaw -= e.movementX * 0.002;
+                clawYaw = Math.max(-0.8, Math.min(0.8, clawYaw));
+                camera.rotation.y = Math.PI + clawYaw;
             }
         }
     });
@@ -369,11 +293,11 @@
             if(e.code === 'KeyE') {
                 coins.forEach(c => { if(c.visible && camera.position.distanceTo(c.position) < 3) { c.visible = false; coinsCount++; document.getElementById('coin-val').innerText = coinsCount; }});
                 if(potion.visible && camera.position.distanceTo(potion.position) < 3) { potion.visible = false; isLuckActive = true; luckTime = 30; document.getElementById('luck-timer').style.display = 'block'; }
-                if(!finalCoinsCollected && camera.position.distanceTo(finalCoins[0].position) < 6) { finalCoins.forEach(c => c.visible = false); coinsCount += 5; finalCoinsCollected = true; document.getElementById('coin-val').innerText = coinsCount; }
                 if(camera.position.distanceTo(machine.position) < 4 && coinsCount > 0) { 
                     gameState = "CLAW"; 
-                    document.getElementById('game-info').style.display = 'block'; 
-                    clawOrbitAngle = Math.PI;
+                    document.getElementById('game-info').style.display = 'block';
+                    clawYaw = 0;
+                    camera.position.set(0, 3.5, -6.5); // Posição fixa frontal
                 }
             }
         } else if(gameState === "CLAW" && !isClawDescending) {
@@ -385,9 +309,7 @@
             if(e.code === 'Escape') { 
                 gameState = "WALK"; 
                 document.getElementById('game-info').style.display = 'none'; 
-                camera.position.set(0, 1.7, -6); 
-                camera.rotation.set(0,0,0);
-                yaw = 0; pitch = 0;
+                camera.position.set(0, 1.7, -6); yaw = 0; pitch = 0;
             }
         }
     });
@@ -410,24 +332,23 @@
                 }
             }
             else if(stage === "UP") { clawSystem.position.y += 0.04; caughtPrizes.forEach(p => p.position.set(clawSystem.position.x, clawSystem.position.y-0.4, clawSystem.position.z)); if(clawSystem.position.y >= 4.5) stage = "DONE"; }
-            else { caughtPrizes.forEach(p => { p.visible = false; prizesLeft--; }); coinsCount--; document.getElementById('coin-val').innerText = coinsCount; document.getElementById('prizes-val').innerText = prizesLeft; clawOpen = 1; clearInterval(interval); isClawDescending = false; if(prizesLeft <= 0) alert("VITÓRIA!"); }
+            else { caughtPrizes.forEach(p => { p.visible = false; prizesLeft--; }); coinsCount--; document.getElementById('coin-val').innerText = coinsCount; document.getElementById('prizes-val').innerText = prizesLeft; clawOpen = 1; clearInterval(interval); isClawDescending = false; }
         }, 20);
     }
 
     function animate() {
         requestAnimationFrame(animate);
         const time = performance.now() * 0.001;
-        
-        // Atualiza o tempo nos shaders da grama e folhas
         groundMat.uniforms.time.value = time;
         leafMat.uniforms.time.value = time;
 
+        // Animação natural dos pássaros
         birds.forEach(b => {
-            b.userData.angle += b.userData.speed;
-            b.position.x = Math.cos(b.userData.angle) * b.userData.dist;
-            b.position.z = Math.sin(b.userData.angle) * b.userData.dist;
-            b.position.y = b.userData.height + Math.sin(time + b.userData.angle) * 2;
-            b.lookAt(Math.cos(b.userData.angle + 0.1) * b.userData.dist, b.position.y, Math.sin(b.userData.angle + 0.1) * b.userData.dist);
+            b.position.add(b.userData.velocity);
+            b.lookAt(b.position.clone().add(b.userData.velocity));
+            // Bate asas simples
+            b.rotation.z = Math.sin(time * 10) * 0.3;
+            if(Math.abs(b.position.x) > 300) resetBird(b);
         });
 
         if(gameState === "WALK") {
@@ -436,9 +357,7 @@
             allPlatforms.forEach(p => {
                 const dx = Math.abs(camera.position.x - p.position.x);
                 const dz = Math.abs(camera.position.z - p.position.z);
-                const platHalfW = p.geometry.parameters.width / 2;
-                const platHalfD = p.geometry.parameters.depth / 2;
-                if(dx < platHalfW && dz < platHalfD && camera.position.y >= p.position.y + 1.2 && camera.position.y <= p.position.y + 1.8) {
+                if(dx < p.geometry.parameters.width/2 && dz < p.geometry.parameters.depth/2 && camera.position.y >= p.position.y + 1.2 && camera.position.y <= p.position.y + 1.8) {
                     camera.position.y = p.position.y + 1.7; velocityY = 0; canJump = true; onPlatform = true;
                 }
             });
@@ -448,16 +367,9 @@
             if (moveF) camera.position.addScaledVector(dir, 0.15); if (moveB) camera.position.addScaledVector(dir, -0.15);
             if (moveL) camera.position.addScaledVector(side, 0.15); if (moveR) camera.position.addScaledVector(side, -0.15);
             if(camera.position.x > 45 && camera.position.y < 0.8) camera.position.copy(parkourStartPos);
-        } else if(gameState === "CLAW") {
-            const orbitRadius = 6;
-            camera.position.x = machine.position.x + Math.sin(clawOrbitAngle) * orbitRadius;
-            camera.position.z = machine.position.z + Math.cos(clawOrbitAngle) * orbitRadius;
-            camera.position.y = 4;
-            camera.lookAt(machine.position.x, 2.5, machine.position.z);
         }
 
         movingPlatforms.forEach(p => { p.mesh.position.z += 0.05 * p.dir; if(Math.abs(p.mesh.position.z - p.startZ) > 5) p.dir *= -1; });
-        if(isLuckActive) { luckTime -= 0.016; document.getElementById('luck-val').innerText = Math.ceil(luckTime); if(luckTime <= 0) { isLuckActive = false; document.getElementById('luck-timer').style.display = 'none'; }}
         if(gameActive) document.getElementById('timer-val').innerText = ((Date.now() - startTime) / 1000).toFixed(1);
         pinchers.forEach(p => p.rotation.x = 0.8 * (1 - clawOpen));
         renderer.render(scene, camera);
