@@ -145,7 +145,7 @@
         coins.push(c);
     }
 
-    // --- ADIÇÃO: PÁSSAROS ---
+    // PÁSSAROS
     const birds = [];
     for(let i=0; i<8; i++) {
         const bird = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.5, 3), new THREE.MeshStandardMaterial({color: 0x000000}));
@@ -155,41 +155,36 @@
         birds.push({mesh: bird, speed: 0.1 + Math.random()*0.2});
     }
 
-    // --- NOVO PARKOUR REFORMULADO (NÃO LINEAR) ---
+    // PARKOUR REFORMULADO
     const platforms = [];
     const obstacles = [];
     const platMat = new THREE.MeshStandardMaterial({color: 0x888888});
     const obsMat = new THREE.MeshStandardMaterial({color: 0xff0000});
     
     for(let i=0; i<30; i++) {
-        // Lógica de espiral para não ser reto
         const angle = i * 0.4; 
         const radius = 10 + (i * 0.5);
         const px = Math.cos(angle) * radius + 15;
         const pz = Math.sin(angle) * radius - 15;
         const py = 1 + (i * 0.9);
 
-        // Geometrias variadas
         let pGeo;
-        if (i % 5 === 0) pGeo = new THREE.BoxGeometry(1.5, 0.4, 5); 
-        else if (i % 7 === 0) pGeo = new THREE.CylinderGeometry(1.5, 1.5, 0.4, 6);
-        else pGeo = new THREE.BoxGeometry(2.5, 0.4, 2.5);
+        if (i % 5 === 0) pGeo = new THREE.BoxGeometry(2, 0.4, 6); 
+        else if (i % 7 === 0) pGeo = new THREE.CylinderGeometry(2, 2, 0.4, 6);
+        else pGeo = new THREE.BoxGeometry(3, 0.4, 3);
 
         const p = new THREE.Mesh(pGeo, platMat);
         p.position.set(px, py, pz);
         scene.add(p);
         platforms.push(p);
 
-        // Obstáculos diferentes
         if(i > 2) {
             if(i % 3 === 0) {
-                // Obstáculo vertical
                 const obs = new THREE.Mesh(new THREE.BoxGeometry(1, 3.5, 1), obsMat);
                 obs.position.set(px, py + 1.8, pz);
                 scene.add(obs);
                 obstacles.push(obs);
             } else if (i % 4 === 0) {
-                // Obstáculo tipo "muro" rotacionado
                 const obs = new THREE.Mesh(new THREE.BoxGeometry(4, 1.2, 0.4), obsMat);
                 obs.position.set(px, py + 0.8, pz);
                 obs.rotation.y = angle;
@@ -251,7 +246,6 @@
     machine.position.set(0, 0, -10);
     scene.add(machine);
 
-    // LÓGICA
     let playerName = "";
     let coinsCount = 0, prizesLeft = prizeTotal;
     let gameState = "SETUP", isClawDescending = false, caughtPrize = null;
@@ -259,11 +253,10 @@
     let moveF = false, moveB = false, moveL = false, moveR = false;
     let yaw = 0, pitch = 0, clawOpen = 1;
 
-    // FÍSICA SIMPLES
     let velocityY = 0;
     let isGrounded = true;
-    const jumpForce = 0.2;
-    const gravity = 0.008;
+    const jumpForce = 0.18; // Ajustado para estabilidade
+    const gravity = 0.007;
 
     window.startGame = () => {
         const input = document.getElementById('player-name');
@@ -399,25 +392,33 @@
             velocityY -= gravity;
             camera.position.y += velocityY;
 
+            // CHÃO
             if(camera.position.y <= 1.7) {
                 camera.position.y = 1.7;
                 velocityY = 0;
                 isGrounded = true;
             }
 
+            // COLISÃO PLATAFORMAS (CONCERTADO)
             platforms.forEach(p => {
-                if(Math.abs(camera.position.x - p.position.x) < 1.5 && 
-                   Math.abs(camera.position.z - p.position.z) < 1.5 && 
-                   camera.position.y >= p.position.y + 1.2 && camera.position.y <= p.position.y + 2) {
-                    camera.position.y = p.position.y + 1.7;
-                    velocityY = 0;
-                    isGrounded = true;
+                const dx = Math.abs(camera.position.x - p.position.x);
+                const dz = Math.abs(camera.position.z - p.position.z);
+                // Verifica se está sobre a plataforma
+                if(dx < 1.8 && dz < 1.8) {
+                    // Verifica se está caindo e acima da plataforma
+                    if(camera.position.y >= p.position.y + 1.2 && camera.position.y <= p.position.y + 1.8 && velocityY <= 0) {
+                        camera.position.y = p.position.y + 1.7;
+                        velocityY = 0;
+                        isGrounded = true;
+                    }
                 }
             });
 
+            // OBSTÁCULOS (RESET)
             obstacles.forEach(o => {
                 if(camera.position.distanceTo(o.position) < 1.2) {
                     camera.position.set(0, 1.7, -6);
+                    velocityY = 0;
                 }
             });
 
