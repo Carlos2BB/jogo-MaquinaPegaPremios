@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Arcade Park - Fixed View</title>
+    <title>Arcade Park - Machine View Fix</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #000; }
         #crosshair {
@@ -57,6 +57,7 @@
         <h2 style="color:#00ffff; margin-top:0">MODO GARRA</h2>
         <ul style="list-style:none; padding:0; line-height: 1.6;">
             <li>Setas: Mover Garra</li>
+            <li>Mouse: Olhar p/ os Lados</li>
             <li>Espaço: Pescar</li>
             <li>ESC: Sair da Máquina</li>
         </ul>
@@ -120,7 +121,7 @@
     const mGlass = new THREE.Mesh(new THREE.BoxGeometry(3.8, 4, 3.8), new THREE.MeshStandardMaterial({color:0xffffff, transparent:true, opacity:0.25}));
     mGlass.position.y = 3.8; machine.add(mGlass);
 
-    // ENFEITES (Painel frontal)
+    // Painel frontal com joystick e botão
     const panel = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.3, 0.8), new THREE.MeshStandardMaterial({color:0x222}));
     panel.position.set(0, 1.6, 2.1); machine.add(panel);
     const joystick = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.5), new THREE.MeshStandardMaterial({color:0x777}));
@@ -128,7 +129,7 @@
     const buttonDeco = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.1), new THREE.MeshStandardMaterial({color:0xff0000}));
     buttonDeco.position.set(0.6, 1.8, 2.1); machine.add(buttonDeco);
     
-    // GARRA
+    // Garra e prêmios
     const clawGroup = new THREE.Group();
     const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,4), new THREE.MeshStandardMaterial({color:0x333}));
     cable.position.y = 2; clawGroup.add(cable);
@@ -150,7 +151,7 @@
     machine.position.set(0, 0, -12);
     scene.add(machine);
 
-    // PARKOUR
+    // PARKOUR E MOEDAS
     const platforms = [];
     const movingPlats = [];
     function createP(x,y,z,w,d, m=false) {
@@ -165,7 +166,6 @@
     const potion = new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.3,0.8), new THREE.MeshStandardMaterial({color:0x00ff00, emissive:0x00ff00}));
     potion.position.set(50, 20, -34); scene.add(potion);
 
-    // MOEDAS
     const coins = [];
     for(let i=0; i<20; i++) {
         const c = new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,0.03), new THREE.MeshStandardMaterial({color:0xffd700}));
@@ -173,8 +173,9 @@
         c.rotation.x = Math.PI/2; scene.add(c); coins.push(c);
     }
 
+    // ESTADOS E LÓGICA
     let state = "WALK", coinsCount = 0, prizesLeft = 10;
-    let yaw = 0, pitch = 0, vY = 0, canJ = true;
+    let yaw = 0, pitch = 0, vY = 0, canJ = true, cYaw = 0;
     let luckT = 0, isLuck = false, isFish = false, cOpen = 1;
     let sTime = 0, active = false;
     const keys = {};
@@ -187,12 +188,15 @@
             coins.forEach(c => { if(c.visible && camera.position.distanceTo(c.position) < 3) { c.visible = false; coinsCount++; document.getElementById('coin-val').innerText = coinsCount; }});
             if(potion.visible && camera.position.distanceTo(potion.position) < 3) { potion.visible = false; isLuck = true; luckT = 30; document.getElementById('luck-timer').style.display = 'block'; }
             
-            if(state === "WALK" && camera.position.distanceTo(machine.position) < 5) {
+            // Lógica para interagir com a máquina e ajustar a câmera (CORRIGIDA)
+            const distToMachine = camera.position.distanceTo(machine.position);
+            if(state === "WALK" && distToMachine < 5) {
                 if(coinsCount > 0) {
                     state = "CLAW"; document.getElementById('game-info').style.display = 'block';
-                    // CÂMERA DE FRENTE: Posição fixa que vê tudo.
-                    camera.position.set(0, 3.8, -4.5); // Recuada e altura média
-                    camera.rotation.set(-0.2, Math.PI, 0); // Leve inclinação para ver prêmios e garra
+                    // CÂMERA DE FRENTE: Posição fixa para ver prêmios e garra.
+                    camera.position.set(0, 3.8, -5.5); // Recuada e altura média
+                    camera.rotation.set(-0.2, Math.PI, 0); // Leve inclinação p/ baixo
+                    cYaw = 0;
                 }
             }
         }
@@ -211,7 +215,12 @@
     document.addEventListener('mousemove', e => {
         if(!document.pointerLockElement) return;
         if(state === "WALK") { yaw -= e.movementX*0.002; pitch -= e.movementY*0.002; pitch = Math.max(-1.5, Math.min(1.5, pitch)); camera.rotation.set(pitch, yaw, 0, 'YXZ'); }
-        // Bloqueado movimento de mouse no modo garra para não perder a frente da máquina
+        else if(state === "CLAW") { 
+            // Permite um olhar leve p/ os lados sem perder a frente da máquina
+            cYaw -= e.movementX*0.0015; 
+            cYaw = Math.max(-0.6, Math.min(0.6, cYaw)); 
+            camera.rotation.y = Math.PI + cYaw; 
+        }
     });
 
     function startFishing() {
@@ -256,6 +265,7 @@
             if(keys['KeyA']) camera.position.addScaledVector(side, 0.15); if(keys['KeyD']) camera.position.addScaledVector(side, -0.15);
         }
 
+        birds.forEach(b => { b.position.add(b.userData.vel); b.rotation.z = Math.sin(t*10)*0.2; if(Math.abs(b.position.x) > 300) resetBird(b); });
         movingPlats.forEach(p => { p.m.position.z += 0.05*p.d; if(Math.abs(p.m.position.z - p.sz) > 6) p.d *= -1; });
         if(isLuck) { luckT -= 0.016; document.getElementById('luck-val').innerText = Math.max(0, luckT).toFixed(1); if(luckT <= 0) { isLuck = false; document.getElementById('luck-timer').style.display = 'none'; }}
         if(active) document.getElementById('timer-val').innerText = ((Date.now() - sTime)/1000).toFixed(1);
