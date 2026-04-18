@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Arcade Park - Transparente Edition</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #000; }
+        #crosshair {
+            position: absolute; top: 50%; left: 50%;
+            width: 8px; height: 8px; background: rgba(255,255,255,0.7);
+            border-radius: 50%; transform: translate(-50%, -50%);
+            pointer-events: none; border: 1px solid black; mix-blend-mode: difference;
+        }
+        #ui-layer {
+            position: absolute; width: 100%; height: 100%;
+            pointer-events: none; display: flex; flex-direction: column;
+            justify-content: space-between; align-items: center;
+            padding: 30px; box-sizing: border-box; color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+        .stats-container { display: flex; gap: 20px; }
+        .stats {
+            background: rgba(0,0,0,0.7); color: #ffd700;
+            padding: 15px 30px; border-radius: 30px;
+            font-size: 22px; border: 2px solid #ffd700;
+        }
+        #prompt {
+            color: white; font-size: 24px; font-weight: bold;
+            background: rgba(0,0,0,0.6); padding: 15px 25px; border-radius: 15px;
+            display: none; border-bottom: 4px solid #ffd700;
+        }
+        #game-info {
+            position: absolute; top: 100px; right: 20px;
+            background: rgba(0,0,0,0.8); color: white; padding: 20px;
+            border-radius: 15px; display: none; border: 2px solid #00ffff;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="crosshair"></div>
+    <div id="ui-layer">
+        <div class="stats-container">
+            <div class="stats">MOEDAS: <span id="coin-val">0</span></div>
+            <div class="stats" style="color: #00ffcc; border-color: #00ffcc;">PRÊMIOS: <span id="prizes-val">0</span></div>
+        </div>
+        <div id="prompt">Pressione [E] para interagir</div>
+    </div>
+
+    <div id="game-info">
+        <h2 style="color:#00ffff; margin-top:0">MODO GARRA</h2>
+        <ul style="list-style:none; padding:0">
+            <li>Setas: Mover</li>
+            <li>Espaço: Pescar</li>
+            <li>ESC: Sair</li>
+        </ul>
+    </div>
+
+<script type="importmap">
+    { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87CEEB);
+    scene.fog = new THREE.FogExp2(0x87CEEB, 0.01);
+
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    document.body.appendChild(renderer.domElement);
+
+    // LUZES
+    const sun = new THREE.DirectionalLight(0xffffff, 1.8);
+    sun.position.set(20, 40, 20);
+    sun.castShadow = true;
+    scene.add(sun);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
+    // CHÃO E ÁRVORES
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({ color: 0x2d5e1e }));
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    for(let i=0; i<40; i++) {
+        const x = Math.random() * 100 - 50, z = Math.random() * 100 - 50;
+        if (Math.abs(x) > 8 || Math.abs(z) > 8) {
+            const tree = new THREE.Group();
+            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 3), new THREE.MeshStandardMaterial({color:0x4d2902}));
+            trunk.position.y = 1.5;
+            const leaves = new THREE.Mesh(new THREE.SphereGeometry(1.5), new THREE.MeshStandardMaterial({color:0x1a4d1a}));
+            leaves.position.y = 4;
+            tree.add(trunk, leaves);
+            tree.position.set(x, 0, z);
+            scene.add(tree);
+        }
+    }
+
+    // MOEDAS
+    let coinsCount = 0, prizesCollected = 0;
+    const coins = [];
+    for(let i=0; i<15; i++) {
+        const c = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.04), new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 1 }));
+        c.position.set(Math.random()*40-20, 0.1, Math.random()*40-20);
+        c.rotation.x = Math.PI/2;
+        scene.add(c);
+        coins.push(c);
+    }
+
+    // MÁQUINA REDESENHADA (ABERTA E TRANSPARENTE)
+    const machine = new THREE.Group();
+    const frameMat = new THREE.MeshStandardMaterial({color: 0xbb0000});
+    
+    // Base onde ficam os prêmios
+    const base = new THREE.Mesh(new THREE.BoxGeometry(3, 1, 3), frameMat);
+    base.position.y = 0.5;
+    machine.add(base);
+
+    // Colunas nos cantos (para não tapar a visão)
+    const colGeo = new THREE.BoxGeometry(0.15, 3.5, 0.15);
+    for(let x of [-1.4, 1.4]) {
+        for(let z of [-1.4, 1.4]) {
+            const col = new THREE.Mesh(colGeo, frameMat);
+            col.position.set(x, 2.75, z);
+            machine.add(col);
+        }
+    }
+
+    // Topo da máquina
+    const top = new THREE.Mesh(new THREE.BoxGeometry(3, 0.5, 3), frameMat);
+    top.position.y = 4.75;
+    machine.add(top);
+
+    // Vidro Ultra Transparente (4 painéis)
+    const glassMat = new THREE.MeshStandardMaterial({color: 0xffffff, transparent: true, opacity: 0.1, roughness: 0});
+    const glassMain = new THREE.Mesh(new THREE.BoxGeometry(2.8, 3.5, 2.8), glassMat);
+    glassMain.position.y = 2.75;
+    machine.add(glassMain);
+
+    const prizesInside = [];
+    for(let i=0; i<25; i++) {
+        const p = new THREE.Mesh(new THREE.SphereGeometry(0.25), new THREE.MeshStandardMaterial({ color: Math.random() * 0xffffff }));
+        p.position.set((Math.random()-0.5)*2.4, 1.25, (Math.random()-0.5)*2.4);
+        machine.add(p);
+        prizesInside.push(p);
+    }
+
+    // GARRA ULTRA VISÍVEL E ANIMADA
+    const clawSystem = new THREE.Group();
+    const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 3), new THREE.MeshStandardMaterial({color:0x222222}));
+    cable.position.y = 1.5;
+    
+    const clawHeadGroup = new THREE.Group();
+    const clawBase = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.15), new THREE.MeshStandardMaterial({color:0xffff00})); // Amarela
+    clawHeadGroup.add(clawBase);
+
+    const pinchers = [];
+    for(let i=0; i<3; i++) {
+        const pPivot = new THREE.Group();
+        const pMesh = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.5, 0.06), new THREE.MeshStandardMaterial({color:0xffff00}));
+        pMesh.position.y = -0.25; pMesh.position.z = 0.2;
+        pPivot.add(pMesh);
+        pPivot.rotation.y = (Math.PI*2/3)*i;
+        clawHeadGroup.add(pPivot);
+        pinchers.push(pPivot);
+    }
+    const clawLight = new THREE.PointLight(0xffff00, 5, 3);
+    clawHeadGroup.add(clawLight);
+    
+    clawSystem.add(cable, clawHeadGroup);
+    clawSystem.position.set(0, 4.5, 0);
+    machine.add(clawSystem);
+    machine.position.set(0, 0, -10);
+    scene.add(machine);
+
+    // LÓGICA
+    let gameState = "WALK", isClawDescending = false, caughtPrize = null;
+    let moveF = false, moveB = false, moveL = false, moveR = false;
+    let yaw = 0, pitch = 0, clawOpen = 1;
+
+    document.addEventListener('mousedown', () => { if(gameState === "WALK") document.body.requestPointerLock(); });
+    document.addEventListener('mousemove', (e) => {
+        if (document.pointerLockElement && gameState === "WALK") {
+            yaw -= e.movementX * 0.002; pitch -= e.movementY * 0.002;
+            pitch = Math.max(-1.5, Math.min(1.5, pitch));
+            camera.rotation.set(pitch, yaw, 0, 'YXZ');
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if(gameState === "WALK") {
+            if(e.code === 'KeyW') moveF = true; if(e.code === 'KeyS') moveB = true; 
+            if(e.code === 'KeyA') moveL = true; if(e.code === 'KeyD') moveR = true;
+            if(e.code === 'KeyE') {
+                coins.forEach(c => { if(c.visible && camera.position.distanceTo(c.position) < 3) { c.visible = false; coinsCount++; document.getElementById('coin-val').innerText = coinsCount; } });
+                if(camera.position.distanceTo(machine.position) < 4 && coinsCount > 0) {
+                    gameState = "CLAW"; coinsCount--; document.getElementById('coin-val').innerText = coinsCount;
+                    document.exitPointerLock(); document.getElementById('game-info').style.display = 'block';
+                    camera.position.set(0, 3.4, -6.5); camera.lookAt(0, 3.4, -10);
+                }
+            }
+        } else if(gameState === "CLAW" && !isClawDescending) {
+            if(e.code === 'ArrowLeft' && clawSystem.position.x > -1.2) clawSystem.position.x -= 0.05;
+            if(e.code === 'ArrowRight' && clawSystem.position.x < 1.2) clawSystem.position.x += 0.05;
+            if(e.code === 'ArrowUp' && clawSystem.position.z > -1.2) clawSystem.position.z -= 0.05;
+            if(e.code === 'ArrowDown' && clawSystem.position.z < 1.2) clawSystem.position.z += 0.05;
+            if(e.code === 'Space') startFishing();
+            if(e.code === 'Escape') { gameState = "WALK"; document.getElementById('game-info').style.display = 'none'; camera.position.set(0, 1.7, -6); }
+        }
+    });
+
+    function startFishing() {
+        isClawDescending = true;
+        let stage = "DOWN";
+        const interval = setInterval(() => {
+            if(stage === "DOWN") {
+                clawOpen = 1; clawSystem.position.y -= 0.06;
+                if(clawSystem.position.y <= 1.6) stage = "GRAB";
+            } else if(stage === "GRAB") {
+                clawOpen -= 0.15;
+                if(clawOpen <= 0) {
+                    clawOpen = 0;
+                    // Detecção de captura (MUITO FÁCIL: raio aumentado)
+                    prizesInside.forEach(p => {
+                        if(p.visible && p.position.distanceTo(new THREE.Vector3(clawSystem.position.x, 1.25, clawSystem.position.z)) < 0.8) {
+                            caughtPrize = p;
+                        }
+                    });
+                    stage = "UP";
+                }
+            } else if(stage === "UP") {
+                clawSystem.position.y += 0.04;
+                if(caughtPrize) {
+                    caughtPrize.position.x = clawSystem.position.x;
+                    caughtPrize.position.z = clawSystem.position.z;
+                    caughtPrize.position.y = clawSystem.position.y - 0.4;
+                }
+                if(clawSystem.position.y >= 4.5) stage = "DONE";
+            } else {
+                if(caughtPrize) { 
+                    caughtPrize.visible = false; 
+                    prizesCollected++; 
+                    document.getElementById('prizes-val').innerText = prizesCollected; 
+                    caughtPrize = null; 
+                    alert("VOCÊ PEGOU!");
+                }
+                clawOpen = 1; clearInterval(interval); isClawDescending = false;
+            }
+        }, 20);
+    }
+
+    document.addEventListener('keyup', (e) => { moveF = moveB = moveL = moveR = false; });
+    camera.position.set(0, 1.7, 10);
+
+    function animate() {
+        requestAnimationFrame(animate);
+        pinchers.forEach(p => p.rotation.x = 0.7 * (1 - clawOpen));
+        if(gameState === "WALK" && document.pointerLockElement) {
+            const dir = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion); dir.y = 0; dir.normalize();
+            const side = new THREE.Vector3().crossVectors(new THREE.Vector3(0,1,0), dir);
+            if (moveF) camera.position.addScaledVector(dir, 0.15); if (moveB) camera.position.addScaledVector(dir, -0.15);
+            if (moveL) camera.position.addScaledVector(side, 0.15); if (moveR) camera.position.addScaledVector(side, -0.15);
+            document.getElementById('prompt').style.display = (camera.position.distanceTo(machine.position) < 4) ? 'block' : 'none';
+        }
+        renderer.render(scene, camera);
+    }
+    animate();
+</script>
+</body>
+</html>
