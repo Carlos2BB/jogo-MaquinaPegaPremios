@@ -155,13 +155,14 @@
         birds.push({mesh: bird, speed: 0.1 + Math.random()*0.2});
     }
 
-    // PARKOUR REFORMULADO
+    // PARKOUR REFORMULADO - Menor
     const platforms = [];
     const obstacles = [];
     const platMat = new THREE.MeshStandardMaterial({color: 0x888888});
     const obsMat = new THREE.MeshStandardMaterial({color: 0xff0000});
     
-    for(let i=0; i<30; i++) {
+    // Alterado de 30 para 15 platforms
+    for(let i=0; i<15; i++) {
         const angle = i * 0.4; 
         const radius = 10 + (i * 0.5);
         const px = Math.cos(angle) * radius + 15;
