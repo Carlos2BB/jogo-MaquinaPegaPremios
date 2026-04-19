@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Arcade Park - Ultra Realistic</title>
+    <title>Arcade Park - Ultra Realistic + Animals</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #000; }
         #crosshair {
@@ -101,7 +101,7 @@
     import * as THREE from 'three';
 
     const scene = new THREE.Scene();
-    scene.fog = new THREE.Fog(0xaaccff, 1, 250); // Adiciona profundidade realista
+    scene.fog = new THREE.Fog(0xaaccff, 1, 250); 
     
     // CÉU REALISTA
     const skyGeo = new THREE.SphereGeometry(450, 32, 15);
@@ -118,15 +118,15 @@
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Sombras mais suaves
-    renderer.toneMapping = THREE.ACESFilmicToneMapping; // Cores de cinema
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
+    renderer.toneMapping = THREE.ACESFilmicToneMapping; 
     document.body.appendChild(renderer.domElement);
 
-    // ILUMINAÇÃO REFORMULADA
+    // ILUMINAÇÃO
     const sun = new THREE.DirectionalLight(0xffffff, 2.5);
     sun.position.set(100, 150, 100);
     sun.castShadow = true;
-    sun.shadow.mapSize.width = 2048; // Sombra alta resolução
+    sun.shadow.mapSize.width = 2048; 
     sun.shadow.mapSize.height = 2048;
     sun.shadow.camera.left = -100; sun.shadow.camera.right = 100;
     sun.shadow.camera.top = 100; sun.shadow.camera.bottom = -100;
@@ -135,14 +135,14 @@
     const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.8);
     scene.add(hemiLight);
 
-    // CHÃO COM TEXTURA DE GRAMA MELHORADA (MATERIAL FÍSICO)
+    // CHÃO
     const ground = new THREE.Mesh(
         new THREE.PlaneGeometry(1000, 1000), 
         new THREE.MeshStandardMaterial({ color: 0x2d5a27, roughness: 0.8, metalness: 0.1 })
     );
     ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
 
-    // ÁRVORES DETALHADAS
+    // ÁRVORES
     for(let i=0; i<60; i++) {
         const x = Math.random() * 180 - 90, z = Math.random() * 180 - 90;
         if (Math.abs(x) > 12 || Math.abs(z) > 18) {
@@ -155,7 +155,7 @@
         }
     }
 
-    // MOEDAS BRILHANTES (OURO REALISTA)
+    // MOEDAS
     const coins = [];
     for(let i=0; i<35; i++) {
         const c = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.02, 32), new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 1.0, roughness: 0.2 }));
@@ -171,7 +171,62 @@
         bird.rotation.x = Math.PI/2; scene.add(bird); birds.push({mesh: bird, speed: 0.15 + Math.random()*0.3});
     }
 
-    // PLATAFORMAS E OBSTÁCULOS (PEDRA REALISTA)
+    // --- ADIÇÃO DE ANIMAIS ---
+    const animals = [];
+
+    // Função auxiliar para criar materiais de animais simplificados
+    const createAnimalMat = (color) => new THREE.MeshStandardMaterial({color: color, roughness: 0.8});
+
+    // 1. Coelhos (Pequenos, brancos, movem-se rápido perto das árvores)
+    for(let i=0; i<8; i++) {
+        const rabbit = new THREE.Group();
+        const body = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), createAnimalMat(0xffffff));
+        body.position.y = 0.2; body.castShadow = true;
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), createAnimalMat(0xffffff));
+        head.position.set(0, 0.35, 0.15); head.castShadow = true;
+        const earL = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.15, 0.02), createAnimalMat(0xffcccc));
+        earL.position.set(-0.05, 0.5, 0.1); earL.rotation.y = 0.2;
+        const earR = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.15, 0.02), createAnimalMat(0xffcccc));
+        earR.position.set(0.05, 0.5, 0.1); earR.rotation.y = -0.2;
+        rabbit.add(body, head, earL, earR);
+        
+        // Posição inicial randomica longe do centro
+        let rx, rz;
+        do { rx = Math.random() * 140 - 70; rz = Math.random() * 140 - 70; } while (Math.abs(rx) < 15 && Math.abs(rz) < 20);
+        rabbit.position.set(rx, 0, rz);
+        scene.add(rabbit);
+        // Define comportamento: tipo, velocidade, e angulo de direção
+        animals.push({mesh: rabbit, type: 'rabbit', speed: 0.03 + Math.random()*0.02, angle: Math.random() * Math.PI * 2});
+    }
+
+    // 2. Raposas (Médias, laranjas, movem-se em circulos maiores)
+    for(let i=0; i<4; i++) {
+        const fox = new THREE.Group();
+        const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.3, 0.3), createAnimalMat(0xd35400)); // Laranja escuro
+        body.position.y = 0.25; body.castShadow = true;
+        const head = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.25, 0.25), createAnimalMat(0xd35400));
+        head.position.set(0.35, 0.35, 0); head.castShadow = true;
+        const snout = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.2, 4), createAnimalMat(0x222222));
+        snout.position.set(0.5, 0.3, 0); snout.rotation.z = -Math.PI/2;
+        const tail = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.5, 4), createAnimalMat(0xe67e22)); // Laranja claro
+        tail.position.set(-0.45, 0.3, 0); tail.rotation.z = Math.PI/2;
+        const legMat = createAnimalMat(0xa04000);
+        for(let j=0; j<4; j++) {
+            const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.25), legMat);
+            leg.position.set( (j<2?0.2:-0.2), 0.125, (j%2===0?0.1:-0.1) ); leg.castShadow = true; fox.add(leg);
+        }
+        fox.add(body, head, snout, tail);
+
+        let fx, fz;
+        do { fx = Math.random() * 160 - 80; fz = Math.random() * 160 - 80; } while (Math.abs(fx) < 20 && Math.abs(fz) < 25);
+        fox.position.set(fx, 0, fz);
+        scene.add(fox);
+        // Define comportamento: move-se em circulo ao redor de um ponto
+        animals.push({mesh: fox, type: 'fox', speed: 0.01 + Math.random()*0.01, pivot: new THREE.Vector3(fx + 5, 0, fz), radius: 5 + Math.random()*3, t: Math.random()*100});
+    }
+
+
+    // PLATAFORMAS E OBSTÁCULOS
     const platforms = []; const obstacles = [];
     for(let i=0; i<15; i++) {
         const angle = i * 0.45; const radius = 12 + (i * 0.6);
@@ -184,7 +239,7 @@
         }
     }
 
-    // BAÚ E POÇÃO (MATERIAIS ESPECIAIS)
+    // BAÚ E POÇÃO
     const chestGroup = new THREE.Group();
     const chestBase = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 0.8), new THREE.MeshStandardMaterial({color: 0x4a3728, roughness: 0.8}));
     chestBase.castShadow = true; chestGroup.add(chestBase);
@@ -198,29 +253,84 @@
     const hand = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.1, 0.4), new THREE.MeshStandardMaterial({color: 0xffdbac, roughness: 0.4}));
     handGroup.add(hand); handGroup.position.set(0.6, -0.6, -1); camera.add(handGroup); scene.add(camera);
 
-    // MÁQUINA DE PREMIOS (PINTURA AUTOMOTIVA)
+    // --- MELHORIA NA MÁQUINA DE PREMIOS (ESTRUTURA + VIDRO) ---
     const machine = new THREE.Group();
-    const machineBody = new THREE.Mesh(new THREE.BoxGeometry(3.5, 1.5, 3.5), new THREE.MeshStandardMaterial({color: 0x880000, metalness: 0.6, roughness: 0.2}));
-    machineBody.receiveShadow = true; machine.add(machineBody);
-    machine.position.set(0, 0.75, -12); scene.add(machine);
     
+    // 1. Base robusta
+    const machineBase = new THREE.Mesh(new THREE.BoxGeometry(3.5, 1.2, 3.5), new THREE.MeshStandardMaterial({color: 0x880000, metalness: 0.6, roughness: 0.2}));
+    machineBase.position.y = 0.6; machineBase.receiveShadow = true; machineBase.castShadow = true;
+    
+    // 2. Área de prêmios (Piso interno)
+    const prizeFloor = new THREE.Mesh(new THREE.BoxGeometry(3.3, 0.1, 3.3), new THREE.MeshStandardMaterial({color: 0x333333, roughness: 0.9}));
+    prizeFloor.position.y = 1.25; prizeFloor.receiveShadow = true;
+    
+    // 3. Estrutura superior (Teto e colunas metálicas)
+    const machineTop = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.3, 3.5), new THREE.MeshStandardMaterial({color: 0xaa0000, metalness: 0.7, roughness: 0.1}));
+    machineTop.position.y = 4.15; machineTop.castShadow = true;
+    
+    // Colunas de canto
+    const columnMat = new THREE.MeshStandardMaterial({color: 0xcccccc, metalness: 1.0, roughness: 0.1});
+    for(let i=0; i<4; i++) {
+        const col = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.7), columnMat);
+        col.position.set( (i<2?1.65:-1.65), 2.7, (i%2===0?1.65:-1.65) );
+        col.castShadow = true; machine.add(col);
+    }
+
+    // 4. --- ADIÇÃO DO VIDRO ---
+    // Painéis transparentes ao redor da área de prêmios (entre base e teto)
+    const glassMat = new THREE.MeshPhysicalMaterial({
+        color: 0xffffff,
+        metalness: 0.1,
+        roughness: 0.05,
+        transmission: 0.95, // Alta transparência
+        ior: 1.5, // Índice de refração do vidro
+        reflectivity: 0.5,
+        transparent: true,
+        opacity: 0.3, // Leve opacidade para ser visível
+        side: THREE.DoubleSide,
+        depthWrite: false // Melhor renderização de transparência
+    });
+
+    // Vidro Frontal (Z+)
+    const glassFront = new THREE.Mesh(new THREE.PlaneGeometry(3.3, 2.7), glassMat);
+    glassFront.position.set(0, 2.7, 1.66); glassFront.renderOrder = 1;
+    
+    // Vidro Traseiro (Z-)
+    const glassBack = new THREE.Mesh(new THREE.PlaneGeometry(3.3, 2.7), glassMat);
+    glassBack.position.set(0, 2.7, -1.66); glassBack.rotation.y = Math.PI; glassBack.renderOrder = 1;
+    
+    // Vidro Esquerdo (X-)
+    const glassLeft = new THREE.Mesh(new THREE.PlaneGeometry(3.3, 2.7), glassMat);
+    glassLeft.position.set(-1.66, 2.7, 0); glassLeft.rotation.y = -Math.PI/2; glassLeft.renderOrder = 1;
+    
+    // Vidro Direito (X+)
+    const glassRight = new THREE.Mesh(new THREE.PlaneGeometry(3.3, 2.7), glassMat);
+    glassRight.position.set(1.66, 2.7, 0); glassRight.rotation.y = Math.PI/2; glassRight.renderOrder = 1;
+
+    machine.add(machineBase, prizeFloor, machineTop, glassFront, glassBack, glassLeft, glassRight);
+    machine.position.set(0, 0, -12); scene.add(machine); // Movemos a máquina para y=0 pois a base tem y=0.6
+    
+    // Prêmios internos (ajustados para y=1.4)
     const prizesInside = [];
     for(let i=0; i<10; i++) {
         const p = new THREE.Mesh(new THREE.SphereGeometry(0.25, 32, 32), new THREE.MeshStandardMaterial({ color: Math.random() * 0xffffff, metalness: 0.5, roughness: 0.1 }));
-        p.position.set((Math.random()-0.5)*2.6, 1.4, (Math.random()-0.5)*2.6); p.castShadow = true; machine.add(p); prizesInside.push(p);
+        p.position.set((Math.random()-0.5)*2.8, 1.55, (Math.random()-0.5)*2.8); // y ajustado para ficar sobre o prizeFloor
+        p.castShadow = true; machine.add(p); prizesInside.push(p);
     }
 
+    // Sistema da garra (ajustado para y=4.15 do teto)
     const clawSystem = new THREE.Group();
-    const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 4), new THREE.MeshStandardMaterial({color:0x222222, metalness: 1})); cable.position.y = 2;
+    const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 3), new THREE.MeshStandardMaterial({color:0x222222, metalness: 1})); cable.position.y = 1.5;
     const clawHead = new THREE.Group(); const pinchers = [];
     for(let i=0; i<3; i++) {
         const pPivot = new THREE.Group(); 
         const pMesh = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.7, 0.06), new THREE.MeshStandardMaterial({color:0xaaaaaa, metalness: 0.9, roughness: 0.1}));
         pMesh.position.set(0, -0.35, 0.2); pPivot.add(pMesh); pPivot.rotation.y = (Math.PI*2/3)*i; clawHead.add(pPivot); pinchers.push(pPivot);
     }
-    clawSystem.add(cable, clawHead); clawSystem.position.set(0, 5, 0); machine.add(clawSystem);
+    clawSystem.add(cable, clawHead); clawSystem.position.set(0, 4.0, 0); // y inicial logo abaixo do teto
+    machine.add(clawSystem);
 
-    // --- LÓGICA DO JOGO (PRESERVADA) ---
+    // --- LÓGICA DO JOGO ---
     let playerName = "", totalPlayers = 1, currentPlayerIndex = 1;
     let coinsCount = 0, prizesLeft = 10, gameState = "SETUP", isClawDescending = false, caughtPrize = null;
     let startTime = 0, gameActive = false, velocityY = 0, isGrounded = true, isLucky = false;
@@ -254,7 +364,7 @@
         document.getElementById('prizes-val').innerText = "10";
         document.getElementById('timer-val').innerText = "0.0";
         coins.forEach(c => c.visible = true);
-        prizesInside.forEach(p => { p.visible = true; p.position.y = 1.4; });
+        prizesInside.forEach(p => { p.visible = true; p.position.y = 1.55; });
         chestGroup.visible = true; isLucky = false;
         document.getElementById('coin-display').style.color = '#ffd700';
     }
@@ -287,14 +397,15 @@
                 }
                 if(camera.position.distanceTo(new THREE.Vector3(0,0,-12)) < 5 && coinsCount > 0) {
                     gameState = "CLAW"; document.exitPointerLock(); document.getElementById('game-info').style.display = 'block';
-                    camera.position.set(0, 4.5, -7.5); camera.lookAt(0, 3, -12);
+                    camera.position.set(0, 4.0, -7.5); camera.lookAt(0, 3, -12); // Câmera ajustada para a nova garra
                 }
             }
         } else if(gameState === "CLAW" && !isClawDescending) {
-            if(e.code === 'ArrowLeft' && clawSystem.position.x > -1.3) clawSystem.position.x -= 0.04;
-            if(e.code === 'ArrowRight' && clawSystem.position.x < 1.3) clawSystem.position.x += 0.04;
-            if(e.code === 'ArrowUp' && clawSystem.position.z > -1.3) clawSystem.position.z -= 0.04;
-            if(e.code === 'ArrowDown' && clawSystem.position.z < 1.3) clawSystem.position.z += 0.04;
+            // Limites de movimento da garra ajustados para o interior do vidro
+            if(e.code === 'ArrowLeft' && clawSystem.position.x > -1.45) clawSystem.position.x -= 0.04;
+            if(e.code === 'ArrowRight' && clawSystem.position.x < 1.45) clawSystem.position.x += 0.04;
+            if(e.code === 'ArrowUp' && clawSystem.position.z > -1.45) clawSystem.position.z -= 0.04;
+            if(e.code === 'ArrowDown' && clawSystem.position.z < 1.45) clawSystem.position.z += 0.04;
             if(e.code === 'Space') startFishing();
             if(e.code === 'Escape') { gameState = "WALK"; document.getElementById('game-info').style.display = 'none'; camera.position.set(0, 1.7, -6); }
         }
@@ -305,9 +416,15 @@
     function startFishing() {
         isClawDescending = true; let stage = "DOWN";
         const interval = setInterval(() => {
-            if(stage === "DOWN") { clawOpen = 1; clawSystem.position.y -= 0.05; if(clawSystem.position.y <= 1.85) stage = "GRAB"; }
-            else if(stage === "GRAB") { clawOpen -= 0.1; if(clawOpen <= 0) { prizesInside.forEach(p => { if(p.visible && p.position.distanceTo(new THREE.Vector3(clawSystem.position.x, 1.4, clawSystem.position.z)) < 0.5) caughtPrize = p; }); stage = "UP"; } }
-            else if(stage === "UP") { clawSystem.position.y += 0.04; if(caughtPrize) caughtPrize.position.set(clawSystem.position.x, clawSystem.position.y - 0.45, clawSystem.position.z); if(clawSystem.position.y >= 5) stage = "DONE"; }
+            if(stage === "DOWN") { clawOpen = 1; clawSystem.position.y -= 0.05; if(clawSystem.position.y <= 1.95) stage = "GRAB"; } // y de grab ajustado
+            else if(stage === "GRAB") { clawOpen -= 0.1; if(clawOpen <= 0) { 
+                prizesInside.forEach(p => { 
+                    // Pega o premio se estiver perto da garra (coordenadas locais da máquina)
+                    if(p.visible && p.position.distanceTo(new THREE.Vector3(clawSystem.position.x, 1.55, clawSystem.position.z)) < 0.5) caughtPrize = p; 
+                }); 
+                stage = "UP"; 
+            } }
+            else if(stage === "UP") { clawSystem.position.y += 0.04; if(caughtPrize) caughtPrize.position.set(clawSystem.position.x, clawSystem.position.y - 0.45, clawSystem.position.z); if(clawSystem.position.y >= 4.0) stage = "DONE"; }
             else {
                 if(caughtPrize) { caughtPrize.visible = false; prizesLeft -= (isLucky ? 2 : 1); coinsCount--; 
                     document.getElementById('coin-val').innerText = coinsCount; document.getElementById('prizes-val').innerText = Math.max(0, prizesLeft);
@@ -354,10 +471,38 @@
     function animate() {
         requestAnimationFrame(animate); 
         pinchers.forEach(p => p.rotation.x = 0.8 * (1 - clawOpen));
+        
+        // Animação Pássaros
         birds.forEach(b => { 
             b.mesh.position.z += b.speed; 
             b.mesh.position.y += Math.sin(Date.now() * 0.002) * 0.02;
             if(b.mesh.position.z > 200) b.mesh.position.z = -200; 
+        });
+
+        // --- ANIMAÇÃO DOS ANIMAIS ---
+        animals.forEach(a => {
+            if(a.type === 'rabbit') {
+                // Move para frente baseado no angulo
+                a.mesh.position.x += Math.sin(a.angle) * a.speed;
+                a.mesh.position.z += Math.cos(a.angle) * a.speed;
+                // Animação simples de pular (senoide rápida)
+                a.mesh.position.y = Math.abs(Math.sin(Date.now() * 0.015)) * 0.15;
+                // Rotaciona para olhar para a direção
+                a.mesh.rotation.y = a.angle + Math.PI;
+
+                // Limites do mapa (muda direção se bater nas bordas)
+                if(Math.abs(a.mesh.position.x) > 90 || Math.abs(a.mesh.position.z) > 90) a.angle += Math.PI;
+                // Evita o centro (máquina e plataformas)
+                if(a.mesh.position.distanceTo(new THREE.Vector3(0,0,0)) < 15) a.angle += Math.PI/2;
+                
+            } else if (a.type === 'fox') {
+                a.t += a.speed;
+                // Move em órbita circular ao redor do pivot
+                a.mesh.position.x = a.pivot.x + Math.sin(a.t) * a.radius;
+                a.mesh.position.z = a.pivot.z + Math.cos(a.t) * a.radius;
+                // Olha para a direção tangente do circulo
+                a.mesh.rotation.y = a.t + Math.PI/2;
+            }
         });
         
         if(gameActive) document.getElementById('timer-val').innerText = ((Date.now() - startTime) / 1000).toFixed(1);
@@ -375,6 +520,7 @@
                 const side = new THREE.Vector3().crossVectors(new THREE.Vector3(0,1,0), dir);
                 if (moveF) camera.position.addScaledVector(dir, 0.18); if (moveB) camera.position.addScaledVector(dir, -0.18);
                 if (moveL) camera.position.addScaledVector(side, 0.18); if (moveR) camera.position.addScaledVector(side, -0.18);
+                // Prompt colisão com baú ou máquina
                 document.getElementById('prompt').style.display = (camera.position.distanceTo(new THREE.Vector3(0,0,-12)) < 5 || (chestGroup.visible && camera.position.distanceTo(chestGroup.position) < 4)) ? 'block' : 'none';
             }
         }
