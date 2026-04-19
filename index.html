@@ -33,8 +33,8 @@
             position: absolute; width: 100%; height: 100%; background: rgba(0,0,0,0.9);
             display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100;
         }
-        input { padding: 10px; font-size: 20px; border-radius: 5px; border: none; margin: 10px; }
-        button { padding: 10px 20px; font-size: 20px; cursor: pointer; background: #ffd700; border: none; border-radius: 5px; font-weight: bold; }
+        input { padding: 10px; font-size: 20px; border-radius: 5px; border: none; margin: 10px; width: 250px; }
+        button { padding: 10px 20px; font-size: 20px; cursor: pointer; background: #ffd700; border: none; border-radius: 5px; font-weight: bold; margin: 5px; }
         #leaderboard {
             position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.8);
             padding: 15px; border-radius: 10px; border: 1px solid #ffd700; color: #fff; font-size: 14px;
@@ -44,14 +44,25 @@
             background: rgba(0,0,0,0.8); color: white; padding: 20px;
             border-radius: 15px; display: none; border: 2px solid #00ffff;
         }
+        .setup-group { display: flex; flex-direction: column; align-items: center; margin-bottom: 20px; }
+        label { color: #ffd700; font-weight: bold; font-size: 18px; }
     </style>
 </head>
 <body>
 
     <div id="setup-screen">
         <h1 style="color: #ffd700;">ARCADE PARK CHALLENGE</h1>
-        <input type="text" id="player-name" placeholder="Digite seu nome..." maxlength="15">
-        <button onclick="startGame()">INICIAR JOGO</button>
+        
+        <div class="setup-group" id="initial-setup">
+            <label>NÚMERO DE JOGADORES (MAX 10):</label>
+            <input type="number" id="total-players" value="1" min="1" max="10">
+            <label id="player-label">NOME DO JOGADOR 1:</label>
+            <input type="text" id="player-name" placeholder="Digite o nome..." maxlength="15">
+            <button onclick="startGame()">INICIAR PARTIDA</button>
+        </div>
+
+        <div id="turn-info" style="color: white; margin-top: 20px; font-size: 20px; display: none;"></div>
+        <button onclick="resetRanking()" style="background: #ff4444; color: white; margin-top: 50px; font-size: 14px;">LIMPAR PLACAR</button>
     </div>
 
     <div id="leaderboard">
@@ -65,7 +76,7 @@
             <div id="coin-display" class="stats">MOEDAS: <span id="coin-val">0</span></div>
             <div class="stats" style="color: #00ffcc; border-color: #00ffcc;">RESTAM: <span id="prizes-val">10</span></div>
             <div class="stats" style="color: #ff4444; border-color: #ff4444;">TEMPO: <span id="timer-val">0.0</span>s</div>
-            <button id="reset-btn" style="display:none" onclick="location.reload()">NOVO JOGO</button>
+            <button onclick="location.reload()" style="background: #555; color: white;">REINICIAR JOGO</button>
         </div>
         <div id="prompt">Pressione [E] para interagir</div>
     </div>
@@ -109,216 +120,128 @@
     sun.castShadow = true;
     scene.add(sun, new THREE.AmbientLight(0xffffff, 0.6));
 
-    // CHÃO
-    const ground = new THREE.Mesh(
-        new THREE.PlaneGeometry(1000, 1000), 
-        new THREE.MeshStandardMaterial({ color: 0x348C31, side: THREE.DoubleSide })
-    );
-    ground.rotation.x = -Math.PI / 2;
-    ground.position.y = 0;
-    ground.receiveShadow = true;
-    scene.add(ground);
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000), new THREE.MeshStandardMaterial({ color: 0x348C31, side: THREE.DoubleSide }));
+    ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
 
-    // Árvores
     for(let i=0; i<50; i++) {
         const x = Math.random() * 160 - 80, z = Math.random() * 160 - 80;
         if (Math.abs(x) > 10 || Math.abs(z) > 15) {
             const tree = new THREE.Group();
             const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 4), new THREE.MeshStandardMaterial({color:0x5D4037}));
-            trunk.position.y = 2;
-            tree.add(trunk);
+            trunk.position.y = 2; tree.add(trunk);
             const foliage = new THREE.Mesh(new THREE.DodecahedronGeometry(2), new THREE.MeshStandardMaterial({color:0x2E7D32}));
-            foliage.position.y = 4.5;
-            tree.add(foliage);
-            tree.position.set(x, 0, z);
-            scene.add(tree);
+            foliage.position.y = 4.5; tree.add(foliage);
+            tree.position.set(x, 0, z); scene.add(tree);
         }
     }
 
-    // Moedas
     const coins = [];
     for(let i=0; i<30; i++) {
         const c = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.015), new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.9 }));
         c.position.set(Math.random()*80-40, 0.1, Math.random()*80-40);
-        c.rotation.x = Math.PI/2;
-        scene.add(c);
-        coins.push(c);
+        c.rotation.x = Math.PI/2; scene.add(c); coins.push(c);
     }
 
-    // PÁSSAROS
     const birds = [];
     for(let i=0; i<8; i++) {
         const bird = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.5, 3), new THREE.MeshStandardMaterial({color: 0x000000}));
         bird.position.set(Math.random()*200-100, 15 + Math.random()*10, Math.random()*200-100);
-        bird.rotation.x = Math.PI/2;
-        scene.add(bird);
-        birds.push({mesh: bird, speed: 0.1 + Math.random()*0.2});
+        bird.rotation.x = Math.PI/2; scene.add(bird); birds.push({mesh: bird, speed: 0.1 + Math.random()*0.2});
     }
 
-    // PARKOUR REFORMULADO
-    const platforms = [];
-    const obstacles = [];
+    const platforms = []; const obstacles = [];
     const platMat = new THREE.MeshStandardMaterial({color: 0x888888});
     const obsMat = new THREE.MeshStandardMaterial({color: 0xff0000});
-    
     for(let i=0; i<15; i++) {
-        const angle = i * 0.4; 
-        const radius = 10 + (i * 0.5);
-        const px = Math.cos(angle) * radius + 15;
-        const pz = Math.sin(angle) * radius - 15;
-        const py = 1 + (i * 0.9);
-
-        let pGeo;
-        if (i % 5 === 0) pGeo = new THREE.BoxGeometry(2, 0.4, 6); 
-        else if (i % 7 === 0) pGeo = new THREE.CylinderGeometry(2, 2, 0.4, 6);
-        else pGeo = new THREE.BoxGeometry(3, 0.4, 3);
-
-        const p = new THREE.Mesh(pGeo, platMat);
-        p.position.set(px, py, pz);
-        scene.add(p);
-        platforms.push(p);
-
+        const angle = i * 0.4; const radius = 10 + (i * 0.5);
+        const px = Math.cos(angle) * radius + 15; const pz = Math.sin(angle) * radius - 15; const py = 1 + (i * 0.9);
+        let pGeo = (i % 5 === 0) ? new THREE.BoxGeometry(2, 0.4, 6) : (i % 7 === 0) ? new THREE.CylinderGeometry(2, 2, 0.4, 6) : new THREE.BoxGeometry(3, 0.4, 3);
+        const p = new THREE.Mesh(pGeo, platMat); p.position.set(px, py, pz); scene.add(p); platforms.push(p);
         if(i > 2) {
             if(i % 3 === 0) {
-                const obs = new THREE.Mesh(new THREE.BoxGeometry(1, 3.5, 1), obsMat);
-                obs.position.set(px, py + 1.8, pz);
-                scene.add(obs);
-                obstacles.push(obs);
+                const obs = new THREE.Mesh(new THREE.BoxGeometry(1, 3.5, 1), obsMat); obs.position.set(px, py + 1.8, pz); scene.add(obs); obstacles.push(obs);
             } else if (i % 4 === 0) {
-                const obs = new THREE.Mesh(new THREE.BoxGeometry(4, 1.2, 0.4), obsMat);
-                obs.position.set(px, py + 0.8, pz);
-                obs.rotation.y = angle;
-                scene.add(obs);
-                obstacles.push(obs);
+                const obs = new THREE.Mesh(new THREE.BoxGeometry(4, 1.2, 0.4), obsMat); obs.position.set(px, py + 0.8, pz); obs.rotation.y = angle; scene.add(obs); obstacles.push(obs);
             }
         }
     }
 
-    // BAÚ E POÇÃO
     const lastPlat = platforms[platforms.length - 1];
     const chestGroup = new THREE.Group();
     const chestBase = new THREE.Mesh(new THREE.BoxGeometry(1, 0.6, 0.7), new THREE.MeshStandardMaterial({color: 0x5D4037}));
-    const chestLid = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.2, 0.75), new THREE.MeshStandardMaterial({color: 0x3E2723}));
-    chestLid.position.y = 0.35;
-    const chestDetail = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.1), new THREE.MeshStandardMaterial({color: 0xffd700}));
-    chestDetail.position.set(0, 0.2, 0.35);
-    chestGroup.add(chestBase, chestLid, chestDetail);
-    
+    const chestLid = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.2, 0.75), new THREE.MeshStandardMaterial({color: 0x3E2723})); chestLid.position.y = 0.35;
     const potion = new THREE.Group();
-    const bottle = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.15, 0.4), new THREE.MeshStandardMaterial({color: 0x00ff00, transparent: true, opacity: 0.7}));
-    const cork = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.1), new THREE.MeshStandardMaterial({color: 0x8D6E63}));
-    cork.position.y = 0.25;
-    potion.add(bottle, cork);
-    potion.position.set(0.4, 0.5, 0);
-    chestGroup.add(potion);
-
+    potion.add(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.15, 0.4), new THREE.MeshStandardMaterial({color: 0x00ff00, transparent: true, opacity: 0.7})));
+    potion.position.set(0.4, 0.5, 0); chestGroup.add(chestBase, chestLid, potion);
     chestGroup.position.set(lastPlat.position.x, lastPlat.position.y + 0.5, lastPlat.position.z);
     scene.add(chestGroup);
 
-    // MÃO
     const handGroup = new THREE.Group();
-    const palm = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.08, 0.35), new THREE.MeshStandardMaterial({color: 0xffdbac}));
     const heldCoin = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.015), new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.9 }));
     heldCoin.position.set(0, 0.08, 0); heldCoin.visible = false;
-    handGroup.add(palm, heldCoin);
-    handGroup.position.set(0.6, -0.6, -1);
-    camera.add(handGroup);
-    scene.add(camera);
+    handGroup.add(new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.08, 0.35), new THREE.MeshStandardMaterial({color: 0xffdbac})), heldCoin);
+    handGroup.position.set(0.6, -0.6, -1); camera.add(handGroup); scene.add(camera);
 
-    // MÁQUINA
     const machine = new THREE.Group();
-    const frameMat = new THREE.MeshStandardMaterial({color: 0xcc0000, metalness: 0.5});
-    const base = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.2, 3.2), frameMat);
-    base.position.y = 0.6;
-    machine.add(base);
-
-    const controlPanel = new THREE.Mesh(new THREE.BoxGeometry(2, 0.4, 0.6), new THREE.MeshStandardMaterial({color: 0x222222}));
-    controlPanel.position.set(0, 1.1, 1.6);
-    machine.add(controlPanel);
-
-    const glass = new THREE.Mesh(new THREE.BoxGeometry(3, 3.5, 3), new THREE.MeshStandardMaterial({color: 0xffffff, transparent: true, opacity: 0.15}));
-    glass.position.y = 2.8;
-    machine.add(glass);
-
+    machine.add(new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.2, 3.2), new THREE.MeshStandardMaterial({color: 0xcc0000, metalness: 0.5})));
+    machine.position.set(0, 0.6, -10); scene.add(machine);
     const prizesInside = [];
-    const prizeTotal = 10;
-    for(let i=0; i<prizeTotal; i++) {
+    for(let i=0; i<10; i++) {
         const p = new THREE.Mesh(new THREE.SphereGeometry(0.22), new THREE.MeshStandardMaterial({ color: Math.random() * 0xffffff }));
-        p.position.set((Math.random()-0.5)*2.4, 1.3, (Math.random()-0.5)*2.4);
-        machine.add(p);
-        prizesInside.push(p);
+        p.position.set((Math.random()-0.5)*2.4, 1.3, (Math.random()-0.5)*2.4); machine.add(p); prizesInside.push(p);
     }
-
     const clawSystem = new THREE.Group();
-    const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 3), new THREE.MeshStandardMaterial({color:0x333333}));
-    cable.position.y = 1.5;
-    const clawHead = new THREE.Group();
-    const pinchers = [];
+    const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 3), new THREE.MeshStandardMaterial({color:0x333333})); cable.position.y = 1.5;
+    const clawHead = new THREE.Group(); const pinchers = [];
     for(let i=0; i<3; i++) {
-        const pPivot = new THREE.Group();
-        const pMesh = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.6, 0.05), new THREE.MeshStandardMaterial({color:0xcccccc}));
-        pMesh.position.y = -0.3; pMesh.position.z = 0.15;
-        pPivot.add(pMesh); pPivot.rotation.y = (Math.PI*2/3)*i;
-        clawHead.add(pPivot); pinchers.push(pPivot);
+        const pPivot = new THREE.Group(); const pMesh = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.6, 0.05), new THREE.MeshStandardMaterial({color:0xcccccc}));
+        pMesh.position.set(0, -0.3, 0.15); pPivot.add(pMesh); pPivot.rotation.y = (Math.PI*2/3)*i; clawHead.add(pPivot); pinchers.push(pPivot);
     }
-    clawSystem.add(cable, clawHead);
-    clawSystem.position.set(0, 4.5, 0);
-    machine.add(clawSystem);
-    machine.position.set(0, 0, -10);
-    scene.add(machine);
+    clawSystem.add(cable, clawHead); clawSystem.position.set(0, 4.5, 0); machine.add(clawSystem);
 
-    let playerName = "";
-    let coinsCount = 0, prizesLeft = prizeTotal;
-    let gameState = "SETUP", isClawDescending = false, caughtPrize = null;
-    let startTime = 0, gameActive = false;
-    let moveF = false, moveB = false, moveL = false, moveR = false;
-    let yaw = 0, pitch = 0, clawOpen = 1;
+    let playerName = "", totalPlayers = 1, currentPlayerIndex = 1;
+    let coinsCount = 0, prizesLeft = 10, gameState = "SETUP", isClawDescending = false, caughtPrize = null;
+    let startTime = 0, gameActive = false, velocityY = 0, isGrounded = true, isLucky = false, luckTimeout = null;
+    let moveF = false, moveB = false, moveL = false, moveR = false, yaw = 0, pitch = 0, clawOpen = 1;
+    const jumpForce = 0.18, gravity = 0.007;
 
-    let velocityY = 0;
-    let isGrounded = true;
-    const jumpForce = 0.18; 
-    const gravity = 0.007;
-
-    // --- LOGICA DA POÇÃO ---
-    let isLucky = false;
-    let luckTimeout = null;
-
-    function activateLuck() {
-        isLucky = true;
-        document.getElementById('coin-display').style.borderColor = '#00ff00';
-        document.getElementById('coin-display').style.color = '#00ff00';
-        
-        if(luckTimeout) clearTimeout(luckTimeout);
-        luckTimeout = setTimeout(() => {
-            isLucky = false;
-            document.getElementById('coin-display').style.borderColor = '#ffd700';
-            document.getElementById('coin-display').style.color = '#ffd700';
-        }, 30000);
-    }
+    window.resetRanking = () => { localStorage.removeItem('arcadeScores'); updateLeaderboard(); };
 
     window.startGame = () => {
-        const input = document.getElementById('player-name');
-        if(input.value.trim() === "") return;
-        playerName = input.value;
+        const nameInput = document.getElementById('player-name');
+        const countInput = document.getElementById('total-players');
+        if(nameInput.value.trim() === "") return;
+        
+        playerName = nameInput.value;
+        totalPlayers = Math.min(10, parseInt(countInput.value) || 1);
+        
         document.getElementById('setup-screen').style.display = 'none';
+        resetLevel();
         gameState = "WALK";
         updateLeaderboard();
     };
 
+    function resetLevel() {
+        camera.position.set(0, 1.7, -6); yaw = 0; pitch = 0;
+        coinsCount = 0; prizesLeft = 10; gameActive = false; startTime = 0;
+        document.getElementById('coin-val').innerText = "0";
+        document.getElementById('prizes-val').innerText = "10";
+        document.getElementById('timer-val').innerText = "0.0";
+        coins.forEach(c => c.visible = true);
+        prizesInside.forEach(p => { p.visible = true; p.position.y = 1.3; });
+        chestGroup.visible = true; isLucky = false;
+        document.getElementById('coin-display').style.borderColor = '#ffd700';
+        document.getElementById('coin-display').style.color = '#ffd700';
+    }
+
     function updateLeaderboard() {
         const scores = JSON.parse(localStorage.getItem('arcadeScores') || "[]");
-        document.getElementById('score-list').innerHTML = scores
-            .sort((a,b) => a.time - b.time).slice(0,5)
-            .map(s => `<div>${s.name}: ${s.time}s</div>`).join('');
+        document.getElementById('score-list').innerHTML = scores.sort((a,b) => a.time - b.time).slice(0,5).map(s => `<div>${s.name}: ${s.time}s</div>`).join('');
     }
 
     function collectCoinAnim() {
-        heldCoin.visible = true;
-        let t = 0;
-        const anim = setInterval(() => {
-            t += 0.1; handGroup.position.y = -0.6 + Math.sin(t * Math.PI) * 0.4;
-            if(t >= 1) { clearInterval(anim); heldCoin.visible = false; handGroup.position.y = -0.6; }
-        }, 30);
+        heldCoin.visible = true; let t = 0;
+        const anim = setInterval(() => { t += 0.1; handGroup.position.y = -0.6 + Math.sin(t * Math.PI) * 0.4; if(t >= 1) { clearInterval(anim); heldCoin.visible = false; handGroup.position.y = -0.6; } }, 30);
     }
 
     document.addEventListener('mousedown', () => { if(gameState === "WALK") document.body.requestPointerLock(); });
@@ -326,8 +249,7 @@
         if (document.pointerLockElement && gameState === "WALK") {
             if(!gameActive) { startTime = Date.now(); gameActive = true; }
             yaw -= e.movementX * 0.002; pitch -= e.movementY * 0.002;
-            pitch = Math.max(-1.5, Math.min(1.5, pitch));
-            camera.rotation.set(pitch, yaw, 0, 'YXZ');
+            pitch = Math.max(-1.5, Math.min(1.5, pitch)); camera.rotation.set(pitch, yaw, 0, 'YXZ');
         }
     });
 
@@ -337,27 +259,16 @@
             if(e.code === 'KeyA') moveL = true; if(e.code === 'KeyD') moveR = true;
             if(e.code === 'Space' && isGrounded) { velocityY = jumpForce; isGrounded = false; }
             if(e.code === 'KeyE') {
-                coins.forEach(c => { if(c.visible && camera.position.distanceTo(c.position) < 3) { 
-                    c.visible = false; coinsCount++; 
-                    document.getElementById('coin-val').innerText = coinsCount;
-                    collectCoinAnim();
-                }});
-
+                coins.forEach(c => { if(c.visible && camera.position.distanceTo(c.position) < 3) { c.visible = false; coinsCount++; document.getElementById('coin-val').innerText = coinsCount; collectCoinAnim(); }});
                 if(chestGroup.visible && camera.position.distanceTo(chestGroup.position) < 3) {
-                    chestGroup.visible = false;
-                    coinsCount += 10;
-                    document.getElementById('coin-val').innerText = coinsCount;
-                    activateLuck(); // ATIVA A SORTE
+                    chestGroup.visible = false; coinsCount += 10; document.getElementById('coin-val').innerText = coinsCount;
+                    isLucky = true; document.getElementById('coin-display').style.color = '#00ff00';
+                    setTimeout(() => { isLucky = false; document.getElementById('coin-display').style.color = '#ffd700'; }, 30000);
                     collectCoinAnim();
                 }
-
-                if(camera.position.distanceTo(machine.position) < 4) {
-                    if(coinsCount > 0) {
-                        gameState = "CLAW";
-                        document.exitPointerLock(); 
-                        document.getElementById('game-info').style.display = 'block';
-                        camera.position.set(0, 3.4, -6.5); camera.lookAt(0, 3.4, -10);
-                    }
+                if(camera.position.distanceTo(new THREE.Vector3(0,0,-10)) < 4 && coinsCount > 0) {
+                    gameState = "CLAW"; document.exitPointerLock(); document.getElementById('game-info').style.display = 'block';
+                    camera.position.set(0, 3.4, -6.5); camera.lookAt(0, 3.4, -10);
                 }
             }
         } else if(gameState === "CLAW" && !isClawDescending) {
@@ -370,49 +281,19 @@
         }
     });
 
-    document.addEventListener('keyup', (e) => { 
-        if(e.code === 'KeyW') moveF = false; if(e.code === 'KeyS') moveB = false; 
-        if(e.code === 'KeyA') moveL = false; if(e.code === 'KeyD') moveR = false;
-    });
+    document.addEventListener('keyup', (e) => { if(e.code === 'KeyW') moveF = false; if(e.code === 'KeyS') moveB = false; if(e.code === 'KeyA') moveL = false; if(e.code === 'KeyD') moveR = false; });
 
     function startFishing() {
-        isClawDescending = true;
-        let stage = "DOWN";
+        isClawDescending = true; let stage = "DOWN";
         const interval = setInterval(() => {
-            if(stage === "DOWN") {
-                clawOpen = 1; clawSystem.position.y -= 0.04;
-                if(clawSystem.position.y <= 1.75) stage = "GRAB";
-            } else if(stage === "GRAB") {
-                clawOpen -= 0.1;
-                if(clawOpen <= 0) {
-                    prizesInside.forEach(p => {
-                        if(p.visible && p.position.distanceTo(new THREE.Vector3(clawSystem.position.x, 1.3, clawSystem.position.z)) < 0.45) {
-                            caughtPrize = p;
-                        }
-                    });
-                    stage = "UP";
-                }
-            } else if(stage === "UP") {
-                clawSystem.position.y += 0.03;
-                if(caughtPrize) caughtPrize.position.set(clawSystem.position.x, clawSystem.position.y - 0.4, clawSystem.position.z);
-                if(clawSystem.position.y >= 4.5) stage = "DONE";
-            } else {
-                if(caughtPrize) { 
-                    caughtPrize.visible = false; 
-                    
-                    // --- EFEITO DE SORTE AQUI ---
-                    let prizeValue = isLucky ? 2 : 1;
-                    prizesLeft -= prizeValue;
-                    if(prizesLeft < 0) prizesLeft = 0;
-                    
-                    coinsCount--;
-                    document.getElementById('coin-val').innerText = coinsCount;
-                    document.getElementById('prizes-val').innerText = prizesLeft;
-                    caughtPrize = null;
-                    if(prizesLeft <= 0) endGame();
-                    else if(coinsCount <= 0) {
-                        gameState = "WALK"; document.getElementById('game-info').style.display = 'none'; camera.position.set(0, 1.7, -6);
-                    }
+            if(stage === "DOWN") { clawOpen = 1; clawSystem.position.y -= 0.04; if(clawSystem.position.y <= 1.75) stage = "GRAB"; }
+            else if(stage === "GRAB") { clawOpen -= 0.1; if(clawOpen <= 0) { prizesInside.forEach(p => { if(p.visible && p.position.distanceTo(new THREE.Vector3(clawSystem.position.x, 1.3, clawSystem.position.z)) < 0.45) caughtPrize = p; }); stage = "UP"; } }
+            else if(stage === "UP") { clawSystem.position.y += 0.03; if(caughtPrize) caughtPrize.position.set(clawSystem.position.x, clawSystem.position.y - 0.4, clawSystem.position.z); if(clawSystem.position.y >= 4.5) stage = "DONE"; }
+            else {
+                if(caughtPrize) { caughtPrize.visible = false; prizesLeft -= (isLucky ? 2 : 1); coinsCount--; 
+                    document.getElementById('coin-val').innerText = coinsCount; document.getElementById('prizes-val').innerText = Math.max(0, prizesLeft);
+                    caughtPrize = null; if(prizesLeft <= 0) endGame();
+                    else if(coinsCount <= 0) { gameState = "WALK"; document.getElementById('game-info').style.display = 'none'; camera.position.set(0, 1.7, -6); }
                 }
                 clawOpen = 1; clearInterval(interval); isClawDescending = false;
             }
@@ -425,64 +306,40 @@
         const scores = JSON.parse(localStorage.getItem('arcadeScores') || "[]");
         scores.push({name: playerName, time: parseFloat(finalTime)});
         localStorage.setItem('arcadeScores', JSON.stringify(scores));
-        document.getElementById('reset-btn').style.display = 'block';
         updateLeaderboard();
+
+        if(currentPlayerIndex < totalPlayers) {
+            currentPlayerIndex++;
+            gameState = "SETUP";
+            document.getElementById('setup-screen').style.display = 'flex';
+            document.getElementById('initial-setup').style.display = 'flex';
+            document.getElementById('player-label').innerText = `NOME DO JOGADOR ${currentPlayerIndex}:`;
+            document.getElementById('player-name').value = "";
+            document.getElementById('total-players').parentElement.style.display = 'none'; // Esconde o seletor de rodadas após começar
+        } else {
+            alert("Fim das rodadas! Verifique o Ranking para ver o vencedor.");
+            location.reload();
+        }
     }
 
     function animate() {
-        requestAnimationFrame(animate);
-        pinchers.forEach(p => p.rotation.x = 0.8 * (1 - clawOpen));
-        
-        birds.forEach(b => {
-            b.mesh.position.z += b.speed;
-            if(b.mesh.position.z > 150) b.mesh.position.z = -150;
-        });
-
+        requestAnimationFrame(animate); pinchers.forEach(p => p.rotation.x = 0.8 * (1 - clawOpen));
+        birds.forEach(b => { b.mesh.position.z += b.speed; if(b.mesh.position.z > 150) b.mesh.position.z = -150; });
         if(gameActive) document.getElementById('timer-val').innerText = ((Date.now() - startTime) / 1000).toFixed(1);
-        
         if(gameState === "WALK") {
-            velocityY -= gravity;
-            camera.position.y += velocityY;
-
-            if(camera.position.y <= 1.7) {
-                camera.position.y = 1.7;
-                velocityY = 0;
-                isGrounded = true;
-            }
-
+            velocityY -= gravity; camera.position.y += velocityY;
+            if(camera.position.y <= 1.7) { camera.position.y = 1.7; velocityY = 0; isGrounded = true; }
             platforms.forEach(p => {
-                const dx = Math.abs(camera.position.x - p.position.x);
-                const dz = Math.abs(camera.position.z - p.position.z);
-                if(dx < 1.8 && dz < 1.8) {
-                    if(camera.position.y >= p.position.y + 1.2 && camera.position.y <= p.position.y + 1.8 && velocityY <= 0) {
-                        camera.position.y = p.position.y + 1.7;
-                        velocityY = 0;
-                        isGrounded = true;
-                    }
-                }
+                const dx = Math.abs(camera.position.x - p.position.x), dz = Math.abs(camera.position.z - p.position.z);
+                if(dx < 1.8 && dz < 1.8 && camera.position.y >= p.position.y + 1.2 && camera.position.y <= p.position.y + 1.8 && velocityY <= 0) { camera.position.y = p.position.y + 1.7; velocityY = 0; isGrounded = true; }
             });
-
-            obstacles.forEach(o => {
-                if(camera.position.distanceTo(o.position) < 1.2) {
-                    camera.position.set(0, 1.7, -6);
-                    velocityY = 0;
-                }
-            });
-
+            obstacles.forEach(o => { if(camera.position.distanceTo(o.position) < 1.2) { camera.position.set(0, 1.7, -6); velocityY = 0; } });
             if(document.pointerLockElement) {
                 const dir = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion); dir.y = 0; dir.normalize();
                 const side = new THREE.Vector3().crossVectors(new THREE.Vector3(0,1,0), dir);
                 if (moveF) camera.position.addScaledVector(dir, 0.15); if (moveB) camera.position.addScaledVector(dir, -0.15);
                 if (moveL) camera.position.addScaledVector(side, 0.15); if (moveR) camera.position.addScaledVector(side, -0.15);
-                
-                const distMachine = camera.position.distanceTo(machine.position);
-                const distChest = camera.position.distanceTo(chestGroup.position);
-                
-                if (distMachine < 4 || (chestGroup.visible && distChest < 3)) {
-                    document.getElementById('prompt').style.display = 'block';
-                } else {
-                    document.getElementById('prompt').style.display = 'none';
-                }
+                document.getElementById('prompt').style.display = (camera.position.distanceTo(new THREE.Vector3(0,0,-10)) < 4 || (chestGroup.visible && camera.position.distanceTo(chestGroup.position) < 3)) ? 'block' : 'none';
             }
         }
         renderer.render(scene, camera);
