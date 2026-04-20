@@ -489,16 +489,38 @@
                 }
             }
 
-            velocityY -= 0.01; camera.position.y += velocityY;
-            if(camera.position.y <= 1.7) { camera.position.y = 1.7; velocityY = 0; isGrounded = true; }
+            // APLICAÇÃO DE GRAVIDADE E MOVIMENTO DE QUEDA
+            velocityY -= 0.01; 
+            camera.position.y += velocityY;
+
+            // CHÃO BÁSICO
+            if(camera.position.y <= 1.7) { 
+                camera.position.y = 1.7; 
+                velocityY = 0; 
+                isGrounded = true; 
+            } else {
+                isGrounded = false;
+            }
+
+            // COLISÃO MELHORADA COM PLATAFORMAS (Elimina o delay no pulo)
             platforms.forEach(p => {
-                const dx = Math.abs(camera.position.x - p.position.x), dz = Math.abs(camera.position.z - p.position.z);
-                const playerBottom = camera.position.y - 1.7;
-                if(dx < 2.2 && dz < 2.2) {
+                const dx = Math.abs(camera.position.x - p.position.x);
+                const dz = Math.abs(camera.position.z - p.position.z);
+                
+                // Raio de colisão da plataforma (tamanho 4x4 -> raio 2)
+                if(dx < 2.1 && dz < 2.1) {
                     const platTop = p.position.y + 0.25;
-                    if(velocityY <= 0 && playerBottom >= platTop - 0.2 && playerBottom <= platTop + 0.3) { camera.position.y = platTop + 1.7; velocityY = 0; isGrounded = true; }
+                    const playerFeet = camera.position.y - 1.7;
+
+                    // Se estiver caindo e os "pés" estiverem na zona de contato do topo da plataforma
+                    if(velocityY <= 0 && playerFeet >= platTop - 0.5 && playerFeet <= platTop + 0.1) { 
+                        camera.position.y = platTop + 1.7; 
+                        velocityY = 0; 
+                        isGrounded = true; 
+                    }
                 }
             });
+
             obstacles.forEach(o => { if(camera.position.distanceTo(o.position) < 1.3) camera.position.set(0, 1.7, -6); });
             monsters.forEach(m => { if(m.visible) {
                 m.lookAt(camera.position.x, 1.75, camera.position.z);
