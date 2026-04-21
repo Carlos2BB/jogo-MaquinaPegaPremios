@@ -147,7 +147,7 @@ function createAirdrop(item, color, time) {
     group.visible = false; scene.add(group); airdrops.push(group);
 }
 
-const monsters=[];const monTex=new THREE.TextureLoader().load('https://i.postimg.cc/5jdjxKNx/Captura-de-tela-22-1-2026-141743.jpg');
+const monsters=[];const monTex=new THREE.TextureLoader().load('https://i.postimg.cc/YqLX3gZs/Captura-de-tela-2026-04-21-115345.png');
 for(let i=0;i<15;i++){const m=new THREE.Mesh(new THREE.PlaneGeometry(2.5,3.5),new THREE.MeshBasicMaterial({map:monTex,side:THREE.DoubleSide,transparent:true}));m.visible=false;m.stunnedUntil=0;scene.add(m);monsters.push(m)}
 
 let pName="",coinsCount=0,prizesLeft=10,gameState="SETUP",isClawDescending=false,caughtPrize=null,startTime=0,gameActive=false,velocityY=0,isGrounded=true,moveF=false,moveB=false,moveL=false,moveR=false,isRunning=false,yaw=0,pitch=0,clawOpen=1,nbSpeed=0.1,stamina=100,ammo=5,currentEquip="NONE",nextEquip="NONE",equipAnimPhase="IDLE";
